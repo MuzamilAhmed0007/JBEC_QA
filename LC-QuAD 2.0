@@ -1,0 +1,10 @@
+{
+     "uid": a unique id number
+     "sparql_wikidata": a sparql fro wikidata endpoint
+     "sparql_dbpedia18": a sparql for DBpedia endpoint which has wikidata information
+     "NNQT_question": system generated question,
+     "question": Verbalised question,
+     "paraphrased_question": paraphrased version of the verbalised question,
+     "template_id": id for the template
+     "template": template discription    
+}
