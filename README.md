@@ -16,7 +16,7 @@ pip install -r requirements.txt
 ### Ensure you also download required NLTK models:
 
 import nltk
-nltk.download('punkt')
+\n nltk.download('punkt')
 nltk.download('averaged_perceptron_tagger')
 nltk.download('wordnet')
 nltk.download('omw-1.4')
