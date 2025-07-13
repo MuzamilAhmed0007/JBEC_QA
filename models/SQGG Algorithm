@@ -1,0 +1,97 @@
+# query_graph/sqgg.py
+import re
+
+class SQGG:
+    def __init__(self):
+        self.query_graph = []
+
+    def add_triple(self, subj, pred, obj):
+        self.query_graph.append((subj, pred, obj))
+
+    def generate_graph(self, pattern, candidate_entities, entity_mentions):
+        """
+        Semantic-aware Query Graph Generation (SQGG) based on:
+        - pattern: str (tokenized or POS-tagged question)
+        - candidate_entities: list of str (entities from KB)
+        - entity_mentions: list of str (detected entities)
+        Returns a query graph (list of triples).
+        """
+        self.query_graph.clear()
+        if not candidate_entities:
+            return self.query_graph
+
+        main_candidate = candidate_entities[0]
+        self._move_begin(pattern, main_candidate)
+
+        for candidate in candidate_entities:
+            if self._is_middle(pattern, candidate):
+                self.add_triple(f"?{candidate}", "type", candidate)
+
+            head = self._before(pattern, candidate)
+
+            if head == main_candidate:
+                self.add_triple(f"?{main_candidate}", "type", candidate)
+
+            elif self._is_phrase(head):
+                if self._before(pattern, head) in candidate_entities:
+                    dominant = self._dominant_candidate(pattern, candidate)
+                    self.add_triple(f"?{dominant}", head, f"?{candidate}")
+
+        for entity in entity_mentions:
+            head = self._before(pattern, entity)
+
+            if self._is_phrase(head):
+                if self._before(pattern, head) in candidate_entities:
+                    dominant = self._dominant_candidate(pattern, entity)
+                    self.add_triple(f"?{dominant}", head, f"?{entity}")
+
+            elif head in entity_mentions:
+                prev_head = self._before(pattern, head)
+                self.add_triple(f"?{prev_head}", head, entity)
+
+            elif head in candidate_entities:
+                self.add_triple(f"?{head}", entity)
+
+        return self.query_graph
+
+    def _move_begin(self, pattern, candidate):
+        """
+        Rearranges question pattern to bring main candidate at beginning.
+        Placeholder: actual implementation should re-tokenize or reorder question.
+        """
+        pass
+
+    def _is_middle(self, pattern, candidate):
+        """
+        Determine if candidate appears in the middle of the pattern.
+        Placeholder for actual NLP-based check.
+        """
+        tokens = pattern.lower().split()
+        return candidate.lower() in tokens[1:-1]
+
+    def _before(self, pattern, token):
+        """
+        Return token or phrase before the current token in question pattern.
+        """
+        tokens = pattern.lower().split()
+        try:
+            idx = tokens.index(token.lower())
+            if idx > 0:
+                return tokens[idx - 1]
+        except ValueError:
+            pass
+        return ""
+
+    def _is_phrase(self, text):
+        """
+        Determines if a text is a meaningful phrase.
+        Placeholder: use NLTK chunker or POS tagging.
+        """
+        return len(text.split()) > 1 or text.isalpha()
+
+    def _dominant_candidate(self, pattern, target):
+        """
+        Dummy placeholder for selecting the most contextually dominant entity.
+        You may use syntax tree or entity distance or attention score from BERT.
+        """
+        return target
