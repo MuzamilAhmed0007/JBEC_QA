@@ -1,0 +1,58 @@
+import torch
+import torch.nn as nn
+from transformers import BertModel, BertTokenizer
+from torchcrf import CRF
+import torch.nn.functional as F
+
+class BERT_CRF(nn.Module):
+    def __init__(self, bert_model="bert-base-uncased", num_labels=10):
+        super(BERT_CRF, self).__init__()
+        self.bert = BertModel.from_pretrained(bert_model)
+        self.dropout = nn.Dropout(0.3)
+        self.classifier = nn.Linear(self.bert.config.hidden_size, num_labels)
+        self.crf = CRF(num_labels, batch_first=True)
+
+    def forward(self, input_ids, attention_mask, labels=None):
+        outputs = self.bert(input_ids=input_ids, attention_mask=attention_mask)
+        sequence_output = self.dropout(outputs.last_hidden_state)
+        emissions = self.classifier(sequence_output)
+
+        if labels is not None:
+            loss = -self.crf(emissions, labels, mask=attention_mask.byte(), reduction='mean')
+            return loss
+        else:
+            prediction = self.crf.decode(emissions, mask=attention_mask.byte())
+            return prediction
+
+    def training_step(self, batch, optimizer):
+        self.train()
+        input_ids = batch["input_ids"].to(self.device)
+        attention_mask = batch["attention_mask"].to(self.device)
+        labels = batch["labels"].to(self.device)
+
+        optimizer.zero_grad()
+        loss = self.forward(input_ids, attention_mask, labels)
+        loss.backward()
+        optimizer.step()
+
+        return loss.item()
+
+    def evaluate_step(self, batch):
+        self.eval()
+        with torch.no_grad():
+            input_ids = batch["input_ids"].to(self.device)
+            attention_mask = batch["attention_mask"].to(self.device)
+            labels = batch["labels"].to(self.device)
+            predictions = self.forward(input_ids, attention_mask)
+        return predictions, labels.cpu().numpy()
+
+    def set_device(self, device):
+        self.device = device
+        self.to(device)
+
+    def save_model(self, path):
+        torch.save(self.state_dict(), path)
+
+    def load_model(self, path):
+        self.load_state_dict(torch.load(path))
+        self.eval()
